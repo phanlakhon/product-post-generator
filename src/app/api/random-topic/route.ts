@@ -186,12 +186,14 @@ const FOCUS_SUBTHEMES: Record<ThreadCategory, string[]> = {
   ],
 };
 
-function buildRandomTopicPrompt(category: ThreadCategory, subtheme: string, seed: number) {
+function buildRandomTopicPrompt(category: ThreadCategory, subtheme: string, seed: number, todayFormatted: string) {
   const isNews = category === 'news';
   const newsRecencyGuidance = isNews
-    ? `SPECIAL MANDATE FOR NEWS (เน้นข่าวใหม่และประเด็นร้อนแรงที่สุดในปัจจุบันเท่านั้น):
-- Focus strictly on VERY RECENT breaking news, latest 2025/2026 technology breakthroughs, brand-new AI model releases, cutting-edge science discoveries, or viral current global trends (ข่าวใหม่ล่าสุดที่สุดเท่าที่เป็นไปได้).
-- DO NOT suggest outdated old events from previous years unless it is a major ongoing news story with a brand-new update today.`
+    ? `CRITICAL 7-DAY TIMEFRAME MANDATE FOR NEWS (ข่าวสดใหม่ถอยหลังไม่เกิน 7 วันเด็ดขาด!):
+- TODAY'S DATE: ${todayFormatted}
+- STRICT 7-DAY LIMIT: Suggest a REAL breaking news story, major technology release, AI breakthrough, or viral international event that occurred WITHIN THE PAST 7 DAYS (ถอยหลังไม่เกิน 7 วัน นับจากวันนี้ ${todayFormatted}).
+- Explicitly mention the recent timeframe or date in the details (e.g. "เมื่อ 2 วันก่อน", "เมื่อวันที่...").
+- ABSOLUTELY DO NOT suggest old events from months or years ago!`
     : '';
 
   return `You are a creative viral Thai social media content researcher.
@@ -245,19 +247,28 @@ export async function POST(req: NextRequest) {
     const randomBankIndex = Math.floor(Math.random() * bankItems.length);
     const selectedBankItem = bankItems[randomBankIndex];
 
-    // For NEWS category, prioritize AI generation 85% of the time to fetch the latest current news!
-    // For other categories, pick from Fact Bank 35% of the time for factual stability.
-    const bankChance = targetCategory === 'news' ? 0.15 : 0.35;
+    // For NEWS category, use 100% AI generation to strictly fetch news within 7 days!
+    // For other categories, pick from Fact Bank 30% of the time for factual stability.
+    const bankChance = targetCategory === 'news' ? 0.0 : 0.3;
     const useBankDirectly = !apiKey || Math.random() < bankChance;
     if (useBankDirectly) {
       return NextResponse.json(selectedBankItem);
     }
 
-    // Otherwise use AI with high temperature (0.85) and rotated sub-theme focus
+    // Otherwise use AI with high temperature (0.85) and 7-day recency prompt
     const subthemes = FOCUS_SUBTHEMES[targetCategory] || FOCUS_SUBTHEMES.horror;
     const selectedSubtheme = subthemes[Math.floor(Math.random() * subthemes.length)];
     const seed = Math.floor(Math.random() * 1000000);
-    const systemPrompt = buildRandomTopicPrompt(targetCategory, selectedSubtheme, seed);
+
+    const now = new Date();
+    const todayFormatted = now.toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'Asia/Bangkok',
+    });
+
+    const systemPrompt = buildRandomTopicPrompt(targetCategory, selectedSubtheme, seed, todayFormatted);
 
     let parsed: any = {};
 
