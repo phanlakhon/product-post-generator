@@ -3,7 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 import { ThreadCategory, AIProvider } from '@/lib/types';
 
-// Verified Fact Bank to prevent LLM location/history hallucinations
+// Expanded Verified Fact Bank with zero duplicate topics
 const VERIFIED_FACT_BANK: Record<ThreadCategory, { topic: string; details: string }[]> = {
   horror: [
     {
@@ -46,19 +46,35 @@ const VERIFIED_FACT_BANK: Record<ThreadCategory, { topic: string; details: strin
       topic: 'อาถรรพ์เกาะตุ๊กตาผี Isla de las Muñecas เม็กซิโก',
       details: 'เกาะกลางทะเลสาบชินิมิลโก ที่แขวนตุ๊กตาเก่านับพันตัวตามต้นไม้ รวบรวมเริ่มตั้งแต่ช่วงทศวรรษ 1950 โดย Don Julián Santana ชายผู้ย้ายมาอยู่บนเกาะเพื่ออุทิศให้วิญญาณเด็กหญิงที่จมน้ำ',
     },
+    {
+      topic: 'เกาะมรณะโพเวเกลีย (Poveglia Island) อิตาลี เกาะกักกันโรคที่เฮี้ยนที่สุดในยุโรป',
+      details: 'เกาะร้างใกล้เมืองเวนิส ประเทศอิตาลี ที่เคยเป็นสถานที่กักตัวและเผาทำลายศพผู้ป่วยกาฬโรคในยุคกลางมากกว่า 160,000 ศพ ปัจจุบันถูกปิดห้ามคนเข้าชม',
+    },
   ],
   news: [
     {
-      topic: 'สรุปวิกฤตความปลอดภัยไซเบอร์ระดับโลก และบทเรียนสำคัญ',
-      details: 'สรุปเหตุการณ์ระบบไอทีและซอฟต์แวร์ระดับโลกขัดข้อง ส่งผลกระทบต่อสายการบิน ธนาคาร และโรงพยาบาลทั่วโลก พร้อมแนวทางป้องกันข้อมูลสำคัญ',
+      topic: 'สรุปมหากาพย์วิกฤตระบบ IT CrowdStrike ขัดข้องสะเทือนโลก',
+      details: 'สรุปเหตุการณ์ซอฟต์แวร์อัปเดตผิดพลาดจนส่งผลให้คอมพิวเตอร์ระบบ Windows ทั่วโลกเกิดหน้าจอฟ้า (BSOD) สายการบิน ธนาคาร และโรงพยาบาลหยุดชะงักทั่วโลก',
     },
     {
-      topic: 'สรุปการแข่งขันปัญญาประดิษฐ์ยุคใหม่ และผลกระทบต่อคนทำงาน',
-      details: 'สรุปการเปิดตัวโมเดล AI รุ่นใหม่ที่มีความสามารถในการคิดวิเคราะห์และประมวลผลมัลติโมดัล พร้อมผลกระทบต่อตลาดแรงงานยุคดิจิทัล',
+      topic: 'สรุปปรากฏการณ์ AI Deepfake ระบาด และแนวทางปกป้องตัวตนยุคดิจิทัล',
+      details: 'สรุปเคสภัยปลอมแปลงเสียงและใบหน้าด้วยเทคโนโลยีปัญญาประดิษฐ์เลียนแบบบุคคลสำคัญ และกลโกงคอลเซ็นเตอร์ยุคใหม่พร้อมวิธีสังเกต',
     },
     {
-      topic: 'สรุปการค้นพบทางดาราศาสตร์ครั้งใหญ่ของกล้องโทรทรรศน์เจมส์ เวบบ์',
-      details: 'สรุปภาพถ่ายและข้อมูลบรรยากาศดาวเคราะห์นอกระบบสุริยะล่าสุดที่เปิดเผยความลับการกำเนิดกาแล็กซีในยุคปฐมกาลของจักรวาล',
+      topic: 'สรุปการค้นพบน้ำเหลวใต้พื้นผิวดาวอังคารยุคโบราณของ NASA',
+      details: 'สรุปข้อมูลจากหุ่นสำรวจดาวอังคารที่พบหลักฐานแหล่งน้ำใต้ดินลึก และโอกาสการค้นพบร่องรอยสิ่งมีชีวิตยุคปฐมกาลนอกโลก',
+    },
+    {
+      topic: 'สรุปสงครามชิปเซมิคอนดักเตอร์โลก (Global Chip War) และเทคโนโลยีแห่งอนาคต',
+      details: 'สรุปการแข่งขันแย่งชิงฐานการผลิตชิปประมวลผลขนาด 2 นาโนเมตรระหว่างมหาอำนาจเทคโนโลยี และผลกระทบต่อราคาสินค้าไอทีทั่วโลก',
+    },
+    {
+      topic: 'สรุปปรากฏการณ์คลื่นความร้อนฮีตโดม (Heat Dome) ถล่มทั่วโลก',
+      details: 'สรุปสถิติอุณหภูมิโลกพุ่งสูงสถิติใหม่ ปรากฏการณ์ความร้อนครอบแก้วที่ทำให้อากาศร้อนจัดยาวนานหลายสัปดาห์ในหลายทวีป',
+    },
+    {
+      topic: 'สรุปภารกิจยานอวกาศ Artemis สู่การส่งมนุษย์กลับไปเหยียบดวงจันทร์อีกครั้ง',
+      details: 'สรุปความคืบหน้าโครงการอวกาศยุคใหม่ของ NASA ที่เตรียมส่งนักบินอวกาศหญิงและนักบินอวกาศผิวสีไปลงจอดบนขั้วใต้ของดวงจันทร์',
     },
   ],
   knowledge: [
@@ -78,6 +94,18 @@ const VERIFIED_FACT_BANK: Record<ThreadCategory, { topic: string; details: strin
       topic: 'ภาวะการรับรู้ขัดแย้ง (Cognitive Dissonance): ทำไมคนเราจึงเข้าข้างตัวเอง?',
       details: 'ปรากฏการณ์ทางจิตวิทยาเมื่อความเชื่อและพฤติกรรมไม่สอดคล้องกัน สมองจะพยายามหาเหตุผลมาสนับสนุนความคิดเดิมเพื่อลดความรู้สึกอึดอัดใจ',
     },
+    {
+      topic: 'เอฟเฟกต์ดันนิ่ง-ครูเกอร์ (Dunning-Kruger Effect): ทำไมคนรู้น้อยถึงมั่นใจมาก?',
+      details: 'ปรากฏการณ์ทางจิตวิทยาที่ผู้มีความรู้หรือทักษะน้อยมักประเมินความสามารถของตนเองสูงเกินจริง เนื่องจากขาดทักษะการตระหนักรู้ในความรู้ของตน (Metacognition)',
+    },
+    {
+      topic: 'ปรากฏการณ์เดจาวู (Déjà Vu): ทำไมสมองถึงรู้สึกเหมือนเคยอยู่ในเหตุการณ์นี้มาก่อน?',
+      details: 'คำอธิบายทางประสาทวิทยาของอาการรู้สึกคุ้นเคยกับสถานที่หรือสถานการณ์ที่ไม่เคยพบมาก่อน เกิดจากการส่งสัญญาณประสาทเหลื่อมเวลากันในสมองส่วนฮิปโปแคมปัส',
+    },
+    {
+      topic: 'ทฤษฎีความสุข Hedonic Treadmill: ทำไมความสุขจากข้าวของใหม่ถึงอยู่ได้ไม่นาน?',
+      details: 'แนวคิดทางจิตวิทยาที่อธิบายว่าคนเราจะปรับระดับความสุขกลับสู่จุดสมดุลเดิมอย่างรวดเร็ว ไม่ว่าจะมีเรื่องดีหรือเรื่องร้ายเกิดขึ้นในชีวิตก็ตาม',
+    },
   ],
   review: [
     {
@@ -87,6 +115,18 @@ const VERIFIED_FACT_BANK: Record<ThreadCategory, { topic: string; details: strin
     {
       topic: 'ป้ายยาหูฟังไร้สาย Bluetooth 5.4 มีระบบ ANC ตัดเสียงรบกวน 35dB',
       details: 'หูฟังไร้สายดีไซน์มินิมอล ไมค์ตัดเสียงสนทนาคมชัด แบตเตอรี่อึด 40 ชั่วโมง ให้คุณภาพเสียงเบสแน่นใส คุ้มค่าเกินราคา',
+    },
+    {
+      topic: 'ป้ายยาเก้าอี้เพื่อสุขภาพ Ergonomic Chair ปรับได้ 4 ทิศทาง แก้ปวดหลังออฟฟิศซินโดรม',
+      details: 'เก้าอี้เพื่อสุขภาพเบาะผ้าตาข่ายระบายอากาศ รองรับเอวสอดรับกับกระดูกสันหลัง ช่วยลดอาการปวดหลังและคอจากการนั่งทำงานนาน',
+    },
+    {
+      topic: 'รีวิวคีย์บอร์ดไร้สาย Mechanical เสียงเพราะพิมพ์สนุก นุ่มสบายมือ',
+      details: 'คีย์บอร์ดไร้สายขนาดกะทัดรัด สวิตช์นุ่ม เสียงพิมพ์ละมุน เชื่อมต่อได้พร้อมกัน 3 อุปกรณ์ เปลี่ยนโต๊ะทำงานให้ดูดีน่าทำงานขึ้น',
+    },
+    {
+      topic: 'ป้ายยาพาวเวอร์แบงค์ MagSafe ขนาดพกพา แปะหลังเครื่องพร้อมขาตั้งในตัว',
+      details: 'พาวเวอร์แบงค์ไร้สายชาร์จไว น้ำหนักเบา มีขาตั้งพับเก็บได้ในตัว สามารถดูซีรีส์ไปพร้อมชาร์จแบตเตอรี่สะดวกสบาย',
     },
   ],
   general: [
@@ -98,52 +138,72 @@ const VERIFIED_FACT_BANK: Record<ThreadCategory, { topic: string; details: strin
       topic: 'ความลับของหอนาฬิกาบิ๊กเบน (Big Ben) และกลไกนาฬิกาประวัติศาสตร์',
       details: 'เรื่องน่ารู้ของหอนาฬิกาพระราชวังเวสต์มินสเตอร์ที่เปิดใช้งานตั้งแต่ปี 1859 กับความแม่นยำอันทึ่งของลูกตุ้มนาฬิกาที่ปรับความเร็วด้วยเหรียญปอนด์เก่า',
     },
+    {
+      topic: 'เรื่องราวของเรือรบ Vasa ที่จมลงทะเลตั้งแต่การเดินเรือครั้งแรกในปี 1628',
+      details: 'ประวัติศาสตร์เรือรบสุดอลังการของสวีเดนที่สร้างอย่างใหญ่โต แต่จมลงทะเลทันทีหลังจากแล่นออกไปได้เพียง 1,300 เมตรเนื่องจากคำนวณน้ำหนักผิดพลาด',
+    },
+    {
+      topic: 'เรื่องเล่าประทับใจของสุนัขฮาจิโกะ (Hachiko) ยอดสุนัขผู้ซื่อสัตย์แห่งสถานีชิบุยะ',
+      details: 'ตำนานความรักและความซื่อสัตย์ของสุนัขสายพันธุ์อากิตะที่มารอเจ้านายกลับจากทำงานที่สถานีรถไฟทุกวันเป็นเวลานานกว่า 9 ปีแม้เจ้านายจะเสียชีวิตไปแล้ว',
+    },
+    {
+      topic: 'ปริศนาลายเส้นนาซกา (Nazca Lines) ภาพวาดขนาดยักษ์บนผืนทรายเพรู',
+      details: 'ภาพวาดเรขาคณิตและรูปสัตว์ขนาดใหญ่บนทะเลทรายเพรูที่สร้างขึ้นเมื่อ 2,000 ปีก่อน ซึ่งสามารถมองเห็นเป็นรูปทรงสมบูรณ์ได้จากบนอากาศเท่านั้น',
+    },
   ],
 };
 
-function buildRandomTopicPrompt(category: ThreadCategory, seed: number) {
-  let categoryGuidance = '';
+const FOCUS_SUBTHEMES: Record<ThreadCategory, string[]> = {
+  horror: [
+    'คดีลี้ลับปริศนาในโรงแรมหรือสถานที่เก่าแก่ยุโรป',
+    'ตำนานเรือร้างหรือเกาะร้างอันตรายกลางมหาสมุทร',
+    'เหตุการณ์สูญหายปริศนาในเทือกเขาหรือป่าทึบ',
+    'คฤหาสน์หรืออาคารที่มีสถาปัตยกรรมลี้ลับ',
+  ],
+  news: [
+    'วิกฤตเทคโนโลยีไอทีหรือความปลอดภัยไซเบอร์ระดับโลก',
+    'การค้นพบทางวิทยาศาสตร์ ดาราศาสตร์ หรืออวกาศครั้งใหม่',
+    'เทรนด์นวัตกรรม AI และผลกระทบต่อสังคมยุคดิจิทัล',
+    'วิกฤตสิ่งแวดล้อม ธรรมชาติ หรือปรากฏการณ์อากาศทั่วโลก',
+  ],
+  knowledge: [
+    'ปรากฏการณ์ทางจิตวิทยาและพฤติกรรมมนุษย์ที่คาดไม่ถึง',
+    'เทคนิคพัฒนาตัวเอง การบริหารเวลา และการทำงานยุคใหม่',
+    'ความลับของสมอง ความฝัน หรือความจำมนุษย์',
+    'หลักการคิดเชิงวิทยาศาสตร์และกฎการตัดสินใจ',
+  ],
+  review: [
+    'อุปกรณ์ไอที แกดเจ็ตโต๊ะทำงาน และสินค้า Smart Home',
+    'สกินแคร์ ไอเทมดูแลผิว หรือผลิตภัณฑ์สุขภาพคุ้มค่า',
+    'อุปกรณ์เครื่องใช้ไฟฟ้าอำนวยความสะดวกในชีวิตประจำวัน',
+    'ของใช้พกพาสำหรับสายเดินทาง หรือไลฟ์สไตล์ยุคใหม่',
+  ],
+  general: [
+    'เหตุการณ์การสำรวจประวัติศาสตร์หรือบุคคลสำคัญระดับโลก',
+    'ประวัติศาสตร์สถาปัตยกรรม สิ่งก่อสร้าง และกลไกโบราณ',
+    'เรื่องเล่าความซื่อสัตย์ของสัตว์เลี้ยงหรือมิตรภาพมนุษย์',
+    'ปริศนาอารยธรรมโบราณและสิ่งมหัศจรรย์ของโลก',
+  ],
+};
 
-  switch (category) {
-    case 'horror':
-      categoryGuidance = `CATEGORY: HORROR & REAL MYSTERIES (เรื่องผี / เรื่องลี้ลับที่มีอยู่จริง)
-STRICT FACT CHECKING MANDATE: Choose a 100% REAL-WORLD documented mystery or haunted location. State the EXACT, CORRECT geographic location name and historical background (e.g. Point Nepean Quarantine Station in Victoria, Cecil Hotel in LA, Dyatlov Pass in Russia). NEVER confuse location names or mix up different places!`;
-      break;
+function buildRandomTopicPrompt(category: ThreadCategory, subtheme: string, seed: number) {
+  return `You are a creative viral Thai social media content researcher.
+Your goal is to suggest 1 UNIQUE, highly captivating, 100% REAL-WORLD topic and brief outline for category: "${category}".
 
-    case 'news':
-      categoryGuidance = `CATEGORY: REAL NEWS & TRENDING TOPICS (สรุปข่าว / ประเด็นดราม่าจริง)
-STRICT FACT CHECKING MANDATE: Choose a real, current or famous viral news event. Must be 100% real.`;
-      break;
+SPECIFIC SUB-THEME FOCUS FOR THIS SUGGESTION:
+"${subtheme}"
 
-    case 'knowledge':
-      categoryGuidance = `CATEGORY: REAL KNOWLEDGE & SCIENCE (สาระความรู้ / ปรากฏการณ์จริง)
-STRICT FACT CHECKING MANDATE: Choose a real science or psychology phenomenon. State facts accurately.`;
-      break;
+CRITICAL RULES:
+1. MUST BE 100% REAL & FACTUALLY ACCURATE: State real documented facts, exact correct place names, real historical events, or real scientific phenomena.
+2. DO NOT SUGGEST POLITICAL PROTESTS IN BANGKOK OR REPETITIVE THAI POLITICS TOPICS! Pick international mysteries, fascinating global news, scientific facts, or viral lifestyle knowledge instead.
+3. VARIETY & UNIQUENESS: Make sure the topic is fresh, intriguing, and totally distinct from common generic news.
 
-    case 'review':
-      categoryGuidance = `CATEGORY: PRODUCT REVIEW & RECOMMENDATION (รีวิวป้ายยาสินค้า)
-Choose a popular, high-demand real product category.`;
-      break;
-
-    case 'general':
-    default:
-      categoryGuidance = `CATEGORY: GENERAL INTERESTING REAL STORIES (เรื่องเล่าเรื่องจริงอเนกประสงค์)
-Choose a remarkable real-life story or historical event. Must be 100% real.`;
-      break;
-  }
-
-  return `You are a creative researcher for a viral Thai social media content creator.
-Your goal is to suggest 1 UNIQUE, highly captivating, 100% REAL-WORLD topic and brief outline.
-
-${categoryGuidance}
-
-FACT CHECKING RULE: Ensure exact geographic accuracy and accurate historical facts. Do NOT mix up place names.
 Random Seed Identifier: ${seed}-${Date.now()}
 
 Output ONLY a valid JSON object matching this exact schema:
 {
   "topic": "Catchy headline in Thai describing the real topic with exact correct location/event name",
-  "details": "Brief 2-3 sentence background facts and key points in Thai (must be factually accurate)"
+  "details": "Brief 2-3 sentence background facts and key points in Thai (must be factually accurate with exact dates/years if applicable)"
 }`;
 }
 
@@ -172,19 +232,22 @@ export async function POST(req: NextRequest) {
       apiKey = cleanClientKey;
     }
 
-    // Pick from Verified Fact Bank 50% of the time or as fallback, to guarantee 100% factual accuracy
     const bankItems = VERIFIED_FACT_BANK[targetCategory] || VERIFIED_FACT_BANK.horror;
     const randomBankIndex = Math.floor(Math.random() * bankItems.length);
     const selectedBankItem = bankItems[randomBankIndex];
 
-    if (!apiKey) {
-      // If no API key, safely return from Verified Fact Bank
+    // 50% chance to pick directly from curated Verified Fact Bank for instant high quality diversity,
+    // OR if no API key is set.
+    const useBankDirectly = !apiKey || Math.random() < 0.5;
+    if (useBankDirectly) {
       return NextResponse.json(selectedBankItem);
     }
 
-    // Use AI with low temperature (0.3) for fact checking accuracy
-    const seed = Math.floor(Math.random() * 100000);
-    const systemPrompt = buildRandomTopicPrompt(targetCategory, seed);
+    // Otherwise use AI with high temperature (0.85) and rotated sub-theme focus
+    const subthemes = FOCUS_SUBTHEMES[targetCategory] || FOCUS_SUBTHEMES.horror;
+    const selectedSubtheme = subthemes[Math.floor(Math.random() * subthemes.length)];
+    const seed = Math.floor(Math.random() * 1000000);
+    const systemPrompt = buildRandomTopicPrompt(targetCategory, selectedSubtheme, seed);
 
     let parsed: any = {};
 
@@ -193,11 +256,11 @@ export async function POST(req: NextRequest) {
         const openai = new OpenAI({ apiKey });
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
-          temperature: 0.3, // Low temp for factual accuracy
+          temperature: 0.85, // High temp for creative variety
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Suggest 1 unique REAL topic for category "${targetCategory}" with random seed ${seed}. Ensure 100% factual accuracy of place names.` },
+            { role: 'user', content: `Suggest 1 unique real topic for subtheme "${selectedSubtheme}" in category "${targetCategory}" (seed: ${seed})` },
           ],
         });
         const rawText = completion.choices[0]?.message?.content || '{}';
@@ -208,7 +271,7 @@ export async function POST(req: NextRequest) {
           model: 'gemini-1.5-flash',
           contents: systemPrompt,
           config: {
-            temperature: 0.3,
+            temperature: 0.85,
             responseMimeType: 'application/json',
           },
         });
