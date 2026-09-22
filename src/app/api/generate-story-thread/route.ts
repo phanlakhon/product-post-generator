@@ -86,6 +86,10 @@ STRICT WRITING RULES:
    - If specific details/outline are provided in the input, follow those exact historical facts strictly.
    - Storytelling can be dramatic, suspenseful, and atmospheric, BUT ALL core facts, historical events, geographic locations, and scientific details MUST be 100% real and accurate according to documented history.
 
+7. STRICT YEAR, DATE & NUMBER FIDELITY (ปี ค.ศ. / ตัวเลข ต้องตรงตามข้อเท็จจริง 100%):
+   - If a specific year (e.g. ปี ค.ศ. 1924, ปี ค.ศ. 1852, ปี 2013), date, or number is mentioned in the STORY OUTLINE & DETAILS, you MUST use that EXACT year/number in the generated thread. NEVER invent, modify, or approximate a different year (e.g. NEVER change 1924 to 1927!).
+   - If no specific year is provided in the input, do NOT make up or state specific numbers/years unless you are 100% historically certain of the exact real-world date.
+
 OUTPUT FORMAT:
 Output ONLY a valid JSON object matching this exact structure:
 {
