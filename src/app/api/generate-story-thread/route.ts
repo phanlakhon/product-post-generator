@@ -79,10 +79,12 @@ STRICT WRITING RULES:
    - CRITICAL FOR BLOCK 1 (HOOK): Block 1 MUST be rich, detailed, compelling, and write BETWEEN 200 - 260 THAI CHARACTERS (making full use of Twitter's 280 char limit!). NEVER write short 1-line or 2-line hooks. Provide vivid background context, intriguing buildup, and suspense.
    - ALL OTHER BLOCKS (Block 2, 3, 4...): MUST also be 200 - 260 Thai characters per block, filled with rich narrative details, clear facts, or strong takeaways.
 
-6. FACT-BASED REAL-WORLD ACCURACY (ห้ามแต่งเรื่องมั่วเกินความจริง):
-   - This thread is based on a REAL event/topic: "${topic}".
-   - State real documented facts, actual timeline, and genuine historical/scientific records accurately.
-   - You may write with dramatic storytelling style, suspense, and emotional flow, BUT DO NOT fabricate ridiculous fake lies or sci-fi fantasies that contradict real-world facts. Keep the story grounded in genuine documented records.
+6. STRICT FACT-BASED REAL-WORLD ACCURACY (ห้ามมั่วสถานที่ ชื่อเฉพาะ หรือประวัติศาสตร์เด็ดขาด):
+   - This thread MUST be based on REAL documented facts about: "${topic}".
+   - Keep real-world proper names (ชื่อสถานที่, ชื่อเมือง, ชื่อสถานี, ชื่อบุคคล) 100% exact and accurate based on real history.
+   - Do NOT mix up place names or fabricate fake history (e.g. NEVER confuse Phillip Island with Point Nepean Quarantine Station).
+   - If specific details/outline are provided in the input, follow those exact historical facts strictly.
+   - Storytelling can be dramatic, suspenseful, and atmospheric, BUT ALL core facts, historical events, geographic locations, and scientific details MUST be 100% real and accurate according to documented history.
 
 OUTPUT FORMAT:
 Output ONLY a valid JSON object matching this exact structure:
@@ -148,6 +150,7 @@ export async function POST(req: NextRequest) {
       const openai = new OpenAI({ apiKey });
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
+        temperature: 0.3,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
@@ -167,6 +170,7 @@ export async function POST(req: NextRequest) {
         model: 'gemini-1.5-flash',
         contents: systemPrompt,
         config: {
+          temperature: 0.3,
           responseMimeType: 'application/json',
         },
       });
