@@ -3,6 +3,22 @@ import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 import { StoryThreadInput, StoryThreadResult, ThreadCategory, AIProvider } from '@/lib/types';
 
+function trimToMaxChars(text: string, maxLen = 270): string {
+  if (!text || text.length <= maxLen) return text;
+  let trimmed = text.slice(0, maxLen);
+  const lastBoundary = Math.max(
+    trimmed.lastIndexOf(' '),
+    trimmed.lastIndexOf('.'),
+    trimmed.lastIndexOf('!'),
+    trimmed.lastIndexOf('ๆ'),
+    trimmed.lastIndexOf('\n')
+  );
+  if (lastBoundary > 180) {
+    trimmed = trimmed.slice(0, lastBoundary);
+  }
+  return trimmed.trim();
+}
+
 function buildStoryThreadPrompt(input: StoryThreadInput) {
   const { topic, category, details, url, threadLength, tone } = input;
   const hasUrl = Boolean(url && url.trim());
@@ -75,9 +91,10 @@ STRICT WRITING RULES:
    - Block 1 label: "Block 1: Hook (เปิดหัว)"
    - Middle blocks labels: e.g. "Block 2: เริ่มเรื่อง/ที่มา", "Block 3: เหตุการณ์พีค", etc.
    - Final block label: "Block ${threadLength}: บทสรุป${hasUrl ? ' & พิกัด' : ''}"
-5. STRICT BLOCK LENGTH & CHARACTER OPTIMIZATION:
-   - CRITICAL FOR BLOCK 1 (HOOK): Block 1 MUST be rich, detailed, compelling, and write BETWEEN 200 - 260 THAI CHARACTERS (making full use of Twitter's 280 char limit!). NEVER write short 1-line or 2-line hooks. Provide vivid background context, intriguing buildup, and suspense.
-   - ALL OTHER BLOCKS (Block 2, 3, 4...): MUST also be 200 - 260 Thai characters per block, filled with rich narrative details, clear facts, or strong takeaways.
+5. STRICT BLOCK LENGTH & HARD CHARACTER LIMIT (ห้ามเกิน 270 ตัวอักษรเด็ดขาด!):
+   - TARGET LENGTH: Write BETWEEN 200 - 250 THAI CHARACTERS per block.
+   - HARD MAXIMUM LIMIT: ABSOLUTELY NEVER EXCEED 270 THAI CHARACTERS per block! (Twitter hard limit is 280 chars).
+   - Keep sentences concise, punchy, and under 250 characters so it never cuts off or gets blocked on Twitter/X.
 
 6. STRICT FACT-BASED REAL-WORLD ACCURACY (ห้ามมั่วสถานที่ ชื่อเฉพาะ หรือประวัติศาสตร์เด็ดขาด):
    - This thread MUST be based on REAL documented facts about: "${topic}".
@@ -98,7 +115,7 @@ Output ONLY a valid JSON object matching this exact structure:
     {
       "stepIndex": 1,
       "label": "Block 1: Hook (เปิดหัว)",
-      "content": "Rich detailed opening hook post here between 200-260 Thai characters (no emojis, no URLs)"
+      "content": "Rich detailed opening hook post here between 200-250 Thai characters (no emojis, no URLs)"
     }
   ]
 }`;
@@ -186,16 +203,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const blocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
+    const rawBlocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
 
     const result: StoryThreadResult = {
       title: parsed.title || topic,
       category,
-      blocks: blocks.map((b: any, index: number) => ({
+      blocks: rawBlocks.map((b: any, index: number) => ({
         stepIndex: index + 1,
         label: b.label || `Block ${index + 1}`,
-        content: b.content || '',
-        hasLink: index === blocks.length - 1 && Boolean(url),
+        content: trimToMaxChars(b.content || '', 270),
+        hasLink: index === rawBlocks.length - 1 && Boolean(url),
       })),
       metadata: {
         generatedAt: new Date().toISOString(),

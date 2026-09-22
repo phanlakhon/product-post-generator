@@ -123,8 +123,21 @@ export const StoryThreadCard: React.FC<StoryThreadCardProps> = ({ data, onCopy }
                   <span className="text-xs text-neutral-400">· Step {block.stepIndex}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
-                    {block.content.length}/280 chars {block.content.length <= 280 ? '✓' : ''}
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
+                      block.content.length <= 270
+                        ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                        : block.content.length <= 280
+                        ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                        : 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 animate-pulse font-bold'
+                    }`}
+                  >
+                    {block.content.length}/280 chars{' '}
+                    {block.content.length <= 270
+                      ? '✓'
+                      : block.content.length <= 280
+                      ? '⚠️ ชิดโควตา'
+                      : '❌ เกิน 280 ตัวอักษร'}
                   </span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                     {block.label}
@@ -154,22 +167,24 @@ export const StoryThreadCard: React.FC<StoryThreadCardProps> = ({ data, onCopy }
                   </span>
                 </div>
 
-                <button
-                  onClick={() => handleCopy(block.content, block.stepIndex, `Block ${block.stepIndex} copied!`)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
-                >
-                  {copiedBlock === block.stepIndex ? (
-                    <>
-                      <Check className="w-3 h-3 text-emerald-500" />
-                      <span>Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3" />
-                      <span>Copy Block {block.stepIndex}</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleCopy(block.content, block.stepIndex, `Block ${block.stepIndex} copied!`)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                  >
+                    {copiedBlock === block.stepIndex ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-500" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy Block {block.stepIndex}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
