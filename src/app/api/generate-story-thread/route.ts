@@ -1,0 +1,215 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
+import { StoryThreadInput, StoryThreadResult, ThreadCategory, AIProvider } from '@/lib/types';
+
+function buildStoryThreadPrompt(input: StoryThreadInput) {
+  const { topic, category, details, url, threadLength, tone } = input;
+  const hasUrl = Boolean(url && url.trim());
+  const hasDetails = Boolean(details && details.trim());
+
+  let categoryInstruction = '';
+  switch (category) {
+    case 'horror':
+      categoryInstruction = `CATEGORY: HORROR & MYSTERY (เรื่องผี / เรื่องลี้ลับ)
+Style & Flow:
+- Block 1: Hook the reader with a terrifying, intriguing opening that leaves them wanting to read more in the thread.
+- Middle Blocks: Build atmospheric suspense, eerie details, strange sounds/events, suspenseful escalation.
+- Final Block: Chilling climax or resolution/warning for readers.`;
+      break;
+
+    case 'news':
+      categoryInstruction = `CATEGORY: NEWS & DRAMA SUMMARY (สรุปข่าว / ประเด็นดราม่า)
+Style & Flow:
+- Block 1: Catchy headline hook summarizing the drama/news event.
+- Middle Blocks: Clear timeline breakdown of what happened step 1, step 2, key evidence/facts, public reactions.
+- Final Block: Current status, conclusion, or key takeaway.`;
+      break;
+
+    case 'knowledge':
+      categoryInstruction = `CATEGORY: KNOWLEDGE & LIFE HACKS (สาระความรู้ / How-to)
+Style & Flow:
+- Block 1: High-value hook promising practical benefit or hacks.
+- Middle Blocks: Actionable tips (1-2-3), practical breakdown, how to apply.
+- Final Block: Summary and takeaway tip.`;
+      break;
+
+    case 'review':
+      categoryInstruction = `CATEGORY: PRODUCT REVIEW & AFFILIATE (รีวิวป้ายยา)
+Style & Flow:
+- Block 1: Human recommendation hook ("สิ่งนี้เลยค่ะ...", "ตัวนี้เลยค่า อยากป้ายยา...").
+- Middle Blocks: Real experience, problem solved, texture/specs, results after using.
+- Final Block: Summary and call to action ${hasUrl ? `with affiliate link: ${url}` : ''}.`;
+      break;
+
+    case 'general':
+    default:
+      categoryInstruction = `CATEGORY: GENERAL STORYTELLING (เรื่องเล่าทั่วไป / ประสบการณ์ชีวิต)
+Style & Flow:
+- Block 1: Engaging hook about a memorable experience, fun story, or interesting topic.
+- Middle Blocks: Narrative progression, funny/relatable moments, key insights.
+- Final Block: Conclusion and final thought.`;
+      break;
+  }
+
+  return `You are an expert Thai social media thread creator writing authentic, viral, and engaging threads for modern Thai readers on X (Twitter) and Meta Threads.
+
+TOPIC / TITLE: "${topic}"
+${categoryInstruction}
+${hasDetails ? `STORY OUTLINE & DETAILS TO WEAVE IN:\n"${details.trim()}"` : ''}
+${hasUrl ? `OPTIONAL LINK TO INCLUDE IN FINAL BLOCK:\n${url?.trim()}` : ''}
+THREAD LENGTH: Exactly ${threadLength} connected blocks.
+
+STRICT WRITING RULES:
+1. NO ROBOTIC META INTROS:
+   - Do NOT write robotic openers like ❌ "มีคนถามเข้ามาเยอะว่า...", ❌ "ขอเล่าเรื่อง...", ❌ "สวัสดีทุกคน".
+   - Start Block 1 naturally with a strong hook that makes readers click to open the thread.
+2. AUTHENTIC HUMAN THAI STYLE:
+   - Use everyday modern spoken Thai. Natural, catchy, and readable phrasing.
+   - For horror: use suspenseful language (สยองขวัญ, บรรยากาศเงียบสงัด, เสียงประหลาด).
+   - For review/general: use natural spoken Thai slang ("คุ้มจริงงงง", "ป้ายยาความคุ้ม", "ลองดูตัวนี้").
+3. STRICT ZERO EMOJIS RULE:
+   - ABSOLUTELY NO EMOJIS AT ALL in any block. Zero emojis!
+4. EXACT BLOCK COUNT & SCHEMA:
+   - You MUST generate exactly ${threadLength} blocks.
+   - Block 1 label: "Block 1: Hook (เปิดหัว)"
+   - Middle blocks labels: e.g. "Block 2: เริ่มเรื่อง/ที่มา", "Block 3: เหตุการณ์พีค", etc.
+   - Final block label: "Block ${threadLength}: บทสรุป${hasUrl ? ' & พิกัด' : ''}"
+5. STRICT BLOCK LENGTH & CHARACTER OPTIMIZATION:
+   - CRITICAL FOR BLOCK 1 (HOOK): Block 1 MUST be rich, detailed, compelling, and write BETWEEN 200 - 260 THAI CHARACTERS (making full use of Twitter's 280 char limit!). NEVER write short 1-line or 2-line hooks. Provide vivid background context, intriguing buildup, and suspense.
+   - ALL OTHER BLOCKS (Block 2, 3, 4...): MUST also be 200 - 260 Thai characters per block, filled with rich narrative details, clear facts, or strong takeaways.
+
+6. FACT-BASED REAL-WORLD ACCURACY (ห้ามแต่งเรื่องมั่วเกินความจริง):
+   - This thread is based on a REAL event/topic: "${topic}".
+   - State real documented facts, actual timeline, and genuine historical/scientific records accurately.
+   - You may write with dramatic storytelling style, suspense, and emotional flow, BUT DO NOT fabricate ridiculous fake lies or sci-fi fantasies that contradict real-world facts. Keep the story grounded in genuine documented records.
+
+OUTPUT FORMAT:
+Output ONLY a valid JSON object matching this exact structure:
+{
+  "title": "${topic}",
+  "blocks": [
+    {
+      "stepIndex": 1,
+      "label": "Block 1: Hook (เปิดหัว)",
+      "content": "Rich detailed opening hook post here between 200-260 Thai characters (no emojis, no URLs)"
+    }
+  ]
+}`;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body: StoryThreadInput = await req.json();
+    const { topic, category, details, url, threadLength, tone, provider: inputProvider, apiKey: clientApiKey } = body;
+
+    if (!topic || !topic.trim()) {
+      return NextResponse.json({ error: 'Topic / Title is required' }, { status: 400 });
+    }
+
+    const cleanClientKey = clientApiKey?.trim();
+    let provider: AIProvider = inputProvider || 'openai';
+
+    if (cleanClientKey) {
+      if (cleanClientKey.startsWith('sk-')) provider = 'openai';
+      if (cleanClientKey.startsWith('AIza')) provider = 'gemini';
+    }
+
+    const envKey = provider === 'openai' ? process.env.OPENAI_API_KEY : process.env.GEMINI_API_KEY;
+
+    let apiKey = '';
+    // Priority: Valid format client key > Environment variable key > Client key fallback
+    if (cleanClientKey && (cleanClientKey.startsWith('sk-') || cleanClientKey.startsWith('AIza'))) {
+      apiKey = cleanClientKey;
+    } else if (envKey) {
+      apiKey = envKey;
+    } else if (cleanClientKey) {
+      apiKey = cleanClientKey;
+    }
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          error:
+            provider === 'openai'
+              ? 'ไม่พบ OpenAI API Key (ChatGPT) กรุณากรอก API Key ในช่องตั้งค่า หรือตั้งค่า OPENAI_API_KEY ในไฟล์ .env ค่ะ'
+              : 'ไม่พบ Gemini API Key กรุณากรอก API Key ในช่องตั้งค่า หรือตั้งค่า GEMINI_API_KEY ในไฟล์ .env ค่ะ',
+        },
+        { status: 400 }
+      );
+    }
+
+    const systemPrompt = buildStoryThreadPrompt(body);
+    let parsed: any = {};
+    let providerName = '';
+
+    if (provider === 'openai') {
+      providerName = 'ChatGPT (OpenAI gpt-4o-mini)';
+      const openai = new OpenAI({ apiKey });
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Generate a ${threadLength}-part story thread about topic: "${topic}" (${category})` },
+        ],
+      });
+      const rawText = completion.choices[0]?.message?.content || '{}';
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (e) {
+        console.error('Failed to parse OpenAI story thread response:', rawText);
+      }
+    } else {
+      providerName = 'Google Gemini (gemini-1.5-flash)';
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-1.5-flash',
+        contents: systemPrompt,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+      const rawText = response.text || '{}';
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (e) {
+        console.error('Failed to parse Gemini story thread response:', rawText);
+      }
+    }
+
+    const blocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
+
+    const result: StoryThreadResult = {
+      title: parsed.title || topic,
+      category,
+      blocks: blocks.map((b: any, index: number) => ({
+        stepIndex: index + 1,
+        label: b.label || `Block ${index + 1}`,
+        content: b.content || '',
+        hasLink: index === blocks.length - 1 && Boolean(url),
+      })),
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        tone,
+        providerUsed: providerName,
+        url: url?.trim() || undefined,
+      },
+    };
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error('Story Thread Generation Error:', error);
+    const errMessage = error?.message || '';
+    const is401 = error?.status === 401 || error?.statusCode === 401 || errMessage.includes('401') || errMessage.includes('Incorrect API key') || errMessage.includes('invalid_api_key');
+
+    const userFriendlyMessage = is401
+      ? `API Key ไม่ถูกต้อง (401 Unauthorized): กรุณาลบหรือแก้ไข API Key ในช่องตั้งค่า "AI Model Settings" ค่ะ`
+      : errMessage || 'เกิดข้อผิดพลาดในการสร้างเธรตเล่าเรื่อง';
+
+    return NextResponse.json(
+      { error: userFriendlyMessage },
+      { status: is401 ? 401 : 500 }
+    );
+  }
+}

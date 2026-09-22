@@ -1,16 +1,20 @@
+export type AppMode = 'post_generator' | 'story_thread';
+
 export type Platform = 'x' | 'facebook' | 'threads';
 
 export type Tone = 'friendly' | 'hard_sale' | 'reviewer' | 'storytelling' | 'qa_answer';
 
+export type ThreadCategory = 'horror' | 'news' | 'knowledge' | 'review' | 'general';
+
 export type AIProvider = 'openai' | 'gemini';
 
 export interface XPostContent {
-  mainPost: string; // MUST NOT contain any link or emojis
-  replyPost: string; // Contains "📍 พิกัดตรงนี้เลย 👇" + URL
+  mainPost: string;
+  replyPost: string;
 }
 
 export interface FacebookPostContent {
-  fullPost: string; // Long form post without emojis, with bullet points & CTA at bottom
+  fullPost: string;
 }
 
 export interface ThreadsPostContent {
@@ -33,10 +37,41 @@ export interface GeneratedResult {
 
 export interface FormInput {
   url: string;
-  productName?: string; // Explicit product name (e.g. รองเท้าแตะเพื่อสุขภาพ, เซรั่ม AMT)
+  productName?: string;
   details: string;
   platforms: Platform[];
   tone: Tone;
   provider?: AIProvider;
   apiKey?: string;
+}
+
+// ----------------- STORY THREAD TYPES -----------------
+export interface StoryThreadInput {
+  topic: string;
+  category: ThreadCategory;
+  details: string;
+  url?: string;
+  threadLength: number; // 3, 4, 5, 6
+  tone: Tone;
+  provider?: AIProvider;
+  apiKey?: string;
+}
+
+export interface StoryThreadBlock {
+  stepIndex: number;
+  label: string; // e.g., "Block 1: Hook เปิดหัว", "Block 2: เริ่มเรื่อง/ปัญหา"
+  content: string;
+  hasLink?: boolean;
+}
+
+export interface StoryThreadResult {
+  title: string;
+  category: ThreadCategory;
+  blocks: StoryThreadBlock[];
+  metadata: {
+    generatedAt: string;
+    tone: Tone;
+    providerUsed?: string;
+    url?: string;
+  };
 }

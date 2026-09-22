@@ -163,7 +163,16 @@ export async function POST(req: NextRequest) {
     }
 
     const envKey = provider === 'openai' ? process.env.OPENAI_API_KEY : process.env.GEMINI_API_KEY;
-    const apiKey = cleanClientKey || envKey;
+
+    let apiKey = '';
+    // Priority: Valid format client key > Environment variable key > Client key fallback
+    if (cleanClientKey && (cleanClientKey.startsWith('sk-') || cleanClientKey.startsWith('AIza'))) {
+      apiKey = cleanClientKey;
+    } else if (envKey) {
+      apiKey = envKey;
+    } else if (cleanClientKey) {
+      apiKey = cleanClientKey;
+    }
 
     if (!apiKey) {
       return NextResponse.json(
@@ -261,9 +270,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('AI Generation Error:', error);
+    const errMessage = error?.message || '';
+    const is401 = error?.status === 401 || error?.statusCode === 401 || errMessage.includes('401') || errMessage.includes('Incorrect API key') || errMessage.includes('invalid_api_key');
+
+    const userFriendlyMessage = is401
+      ? `API Key ไม่ถูกต้อง (401 Unauthorized): กรุณาลบหรือแก้ไข API Key ในช่องตั้งค่า "AI Model Settings" ค่ะ`
+      : errMessage || 'เกิดข้อผิดพลาดในการประมวลผลจาก AI';
+
     return NextResponse.json(
-      { error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผลจาก AI' },
-      { status: 500 }
+      { error: userFriendlyMessage },
+      { status: is401 ? 401 : 500 }
     );
   }
 }
